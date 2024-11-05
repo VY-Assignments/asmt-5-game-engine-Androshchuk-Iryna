@@ -119,6 +119,12 @@ public:
     bool isGameOver() const {
         return parts >= 6;
     }
+    void removePart() {
+        if (parts > 0) {
+            parts--;
+        }
+    }
+
 };
 
 class WordSelector {
@@ -215,6 +221,14 @@ public:
         }
         return true;
     }
+    void revealLetter() {
+        for (char c : currentWord) {
+            if (c != ' ' && guessedLetters.count(c) == 0) {
+                guessedLetters.insert(c);
+                break;
+            }
+        }
+    }
 };
 
 enum Screens {
@@ -270,7 +284,6 @@ private:
     Button* mediumButton;
     Button* hardButton;
     Button* restartButton;
-    Screens currentScreen = Screens::Start;
     string userInput;
     sf::Text difficultText;
     sf::Text wordDisplay;
@@ -281,6 +294,7 @@ private:
     Hangman hangman;
     Player player;
 
+    Screens currentScreen = Screens::Start;
     class Game* game = nullptr;
     bool gameWon = false;
 
@@ -332,6 +346,13 @@ private:
                             gameWon = true;
                         }
                     }
+                }
+
+                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Num1) {
+                    hangman.removePart();
+                }
+                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Num2) {
+                    game->revealLetter(); // Відкрити одну літеру
                 }
             }
             if (currentScreen == Screens::Restart) {
