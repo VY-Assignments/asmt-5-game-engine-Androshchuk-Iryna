@@ -3,10 +3,11 @@
 #include <functional>
 #include <fstream>
 #include <sstream>
+#include <set>
 
 using namespace std;
 
-class Player{
+class Player {
 private:
     string name;
     int score;
@@ -32,7 +33,6 @@ public:
         rope.setPosition(395, 100);
         rope.setFillColor(sf::Color::Black);
         window.draw(rope);
-
 
         if (parts >= 1) {
             sf::CircleShape head(20);
@@ -88,13 +88,13 @@ public:
     }
 
     void addPart() {
-        if (parts <= 6) {
+        if (parts < 6) {
             parts++;
         }
     }
 
-    bool checkIfComplete() const {
-        return parts > 6;
+    bool isGameOver() const {
+        return parts >= 6;
     }
 };
 
@@ -148,23 +148,58 @@ public:
 
 class Game {
 private:
-    string currentWord;
+    set<char> guessedLetters;
+
 public:
+    string currentWord;
     void initializeGame(const string& filename, int difficulty) {
         WordSelector selector(filename);
         currentWord = selector.getRandomWord(difficulty);
+        guessedLetters.clear();
     }
-    string getCurrentWord() const {
-        return currentWord;
+
+    bool guessLetter(char letter) {
+        guessedLetters.insert(letter);
+        return currentWord.find(letter) != string::npos;
+    }
+
+    string getGuessedLetters() const {
+        string letters;
+        for (char letter : guessedLetters) {
+            letters += letter;
+            letters += ' ';
+        }
+        return letters;
+    }
+
+    string getDisplayedWord() const {
+        string displayedWord;
+        for (char c : currentWord) {
+            if (guessedLetters.count(c) > 0 || c == ' ') {
+                displayedWord += c;
+            } else {
+                displayedWord += '_';
+            }
+        }
+        return displayedWord;
+    }
+
+    bool isGameWon() const {
+        for (char c : currentWord) {
+            if (c != ' ' && guessedLetters.count(c) == 0) {
+                return false;
+            }
+        }
+        return true;
     }
 };
-
 
 enum Screens {
     Start,
     Name,
     GameDificaulty,
-    Game
+    Game,
+    Restart
 };
 
 class Button {
@@ -174,7 +209,7 @@ private:
     function<void()> onClick;
 
 public:
-    Button(float x, float y, float width, float height, const string& buttonText, sf::Font& font, function<void()> onClick): onClick(onClick) {
+    Button(float x, float y, float width, float height, const string& buttonText, sf::Font& font, function<void()> onClick) : onClick(onClick) {
         shape.setPosition(x, y);
         shape.setSize(sf::Vector2f(width, height));
         shape.setFillColor(sf::Color::Black);
@@ -211,12 +246,17 @@ private:
     Button* easyButton;
     Button* mediumButton;
     Button* hardButton;
+    Button* restartButton;
     Screens currentScreen = Screens::Start;
     string userInput;
     sf::Text difficultText;
     sf::Text wordDisplay;
+    sf::Text guessedLettersDisplay;
+    sf::Text winingText;
+    sf::Text losingText;
     Hangman hangman;
     class Game* game = nullptr;
+    bool gameWon = false;
 
     void processEvents() {
         sf::Event event;
@@ -246,6 +286,28 @@ private:
                 mediumButton->handleEvent(event);
                 hardButton->handleEvent(event);
             }
+            if (currentScreen == Screens::Game) {
+                if (event.type == sf::Event::TextEntered && event.text.unicode < 128) {
+                    char guessedLetter = static_cast<char>(event.text.unicode);
+                    if (isalpha(guessedLetter)) {
+                        if (!game->guessLetter(guessedLetter)) {
+                            hangman.addPart();
+                        }
+                        if (hangman.isGameOver()) {
+                            currentScreen = Screens::Restart;
+                            losingText.setString("You lost! The word was: " + game->currentWord);
+                            gameWon = false;
+                        } else if (game->isGameWon()) {
+                            currentScreen = Screens::Restart;
+                            winingText.setString("You won!");
+                            gameWon = true;
+                        }
+                    }
+                }
+            }
+            if (currentScreen == Screens::Restart) {
+                restartButton->handleEvent(event);
+            }
         }
     }
 
@@ -265,17 +327,18 @@ private:
             window.draw(difficultText);
         } else if (currentScreen == Screens::Game) {
             hangman.draw(window);
+            wordDisplay.setString(game->getDisplayedWord());
+            window.draw(wordDisplay);
 
-            if (game) {
-                string displayedWord = game->getCurrentWord();
-                for (char& ch : displayedWord) {
-                    if (ch != ' ') {
-//                        ch = '_';
-                    }
-                }
-                wordDisplay.setString(displayedWord);
-                window.draw(wordDisplay);
+            guessedLettersDisplay.setString("Guessed Letters: " + game->getGuessedLetters());
+            window.draw(guessedLettersDisplay);
+        } else if (currentScreen == Screens::Restart) {
+            if (gameWon) {
+                window.draw(winingText);
+            } else {
+                window.draw(losingText);
             }
+            restartButton->draw(window);
         }
 
         window.display();
@@ -290,7 +353,7 @@ public:
         }
 
         startText.setFont(font);
-        startText.setString("Hangman Name");
+        startText.setString("Hangman Game");
         startText.setFillColor(sf::Color::Black);
         startText.setPosition(250, 100);
 
@@ -307,6 +370,14 @@ public:
         wordDisplay.setFillColor(sf::Color::Black);
         wordDisplay.setPosition(300, 400);
 
+        winingText.setFont(font);
+        winingText.setFillColor(sf::Color::Black);
+        winingText.setPosition(250, 200);
+
+        losingText.setFont(font);
+        losingText.setFillColor(sf::Color::Black);
+        losingText.setPosition(150, 200);
+
         startButton = new Button(300, 300, 200, 50, "Start Game", font, [this]() {
             currentScreen = Screens::Name;
         });
@@ -321,10 +392,17 @@ public:
             startGame('Hard');
         });
 
+        restartButton = new Button(300, 400, 250, 50, "Restart Game", font, [this]() {
+            currentScreen = Screens::Start;
+        });
+
         difficultText.setFont(font);
-        difficultText.setString("Hi, " + userInput + "! Choose difficulty:\n");
         difficultText.setFillColor(sf::Color::Black);
-        difficultText.setPosition(200, 100);
+        difficultText.setPosition(300, 100);
+
+        guessedLettersDisplay.setFont(font);
+        guessedLettersDisplay.setFillColor(sf::Color::Black);
+        guessedLettersDisplay.setPosition(50, 50);
     }
 
     void run() {
@@ -333,18 +411,17 @@ public:
             render();
         }
     }
+
     void startGame(int difficulty) {
         currentScreen = Screens::Game;
         game = new class Game();
         game->initializeGame("/Users/mac/CLionProjects/untitled13/words.txt", difficulty);
+        hangman = Hangman();
     }
 };
-
-
 
 int main() {
     StartGameWindow gameWindow(800, 600, "Hangman Game");
     gameWindow.run();
-
     return 0;
 }
