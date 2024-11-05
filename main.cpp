@@ -10,8 +10,31 @@ using namespace std;
 class Player {
 private:
     string name;
-    int score;
+    int score = 0;
+
+public:
+
+    void setName(const string& playerName) {
+        name = playerName;
+    }
+
+    string getName() const {
+        return name;
+    }
+
+    int getScore() const {
+        return score;
+    }
+
+    void incrementScore() {
+        score += 10;
+    }
+
+    void decreaseScore(){
+        score -= 5;
+    }
 };
+
 
 class Hangman{
 private:
@@ -254,7 +277,10 @@ private:
     sf::Text guessedLettersDisplay;
     sf::Text winingText;
     sf::Text losingText;
+    sf::Text playerNameDisplay;
     Hangman hangman;
+    Player player;
+
     class Game* game = nullptr;
     bool gameWon = false;
 
@@ -278,7 +304,8 @@ private:
                     userInputText.setString(userInput);
                 } else if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter) {
                     currentScreen = Screens::GameDificaulty;
-                    difficultText.setString("Hi, " + userInput + "! Choose difficulty:\n");
+                    player.setName(userInput);
+                    difficultText.setString("Hi, " + player.getName() + "! Choose difficulty:\n");
                 }
             }
             if (currentScreen == Screens::GameDificaulty) {
@@ -296,9 +323,11 @@ private:
                         if (hangman.isGameOver()) {
                             currentScreen = Screens::Restart;
                             losingText.setString("You lost! The word was: " + game->currentWord);
+                            player.decreaseScore();
                             gameWon = false;
                         } else if (game->isGameWon()) {
                             currentScreen = Screens::Restart;
+                            player.incrementScore();
                             winingText.setString("You won!");
                             gameWon = true;
                         }
@@ -332,6 +361,9 @@ private:
 
             guessedLettersDisplay.setString("Guessed Letters: " + game->getGuessedLetters());
             window.draw(guessedLettersDisplay);
+
+            playerNameDisplay.setString("Player: " + player.getName() + " | Score: " + to_string(player.getScore()));
+            window.draw(playerNameDisplay);
         } else if (currentScreen == Screens::Restart) {
             if (gameWon) {
                 window.draw(winingText);
@@ -372,7 +404,7 @@ public:
 
         winingText.setFont(font);
         winingText.setFillColor(sf::Color::Black);
-        winingText.setPosition(250, 200);
+        winingText.setPosition(300, 200);
 
         losingText.setFont(font);
         losingText.setFillColor(sf::Color::Black);
@@ -392,17 +424,26 @@ public:
             startGame('Hard');
         });
 
-        restartButton = new Button(300, 400, 250, 50, "Restart Game", font, [this]() {
+        restartButton = new Button(250, 400, 250, 50, "Restart Game", font, [this]() {
             currentScreen = Screens::Start;
         });
 
         difficultText.setFont(font);
         difficultText.setFillColor(sf::Color::Black);
-        difficultText.setPosition(300, 100);
+        difficultText.setPosition(200, 100);
 
         guessedLettersDisplay.setFont(font);
         guessedLettersDisplay.setFillColor(sf::Color::Black);
         guessedLettersDisplay.setPosition(50, 50);
+        guessedLettersDisplay.setCharacterSize(20);
+
+
+        playerNameDisplay.setFont(font);
+        playerNameDisplay.setFillColor(sf::Color::Black);
+        playerNameDisplay.setPosition(50, 10);
+        playerNameDisplay.setCharacterSize(20);
+        playerNameDisplay.setString("Player: " + player.getName() + " Score: " + to_string(player.getScore()));
+
     }
 
     void run() {
