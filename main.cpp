@@ -40,8 +40,7 @@ class Hangman{
 private:
     int parts=0;
 public:
-    void draw(sf::RenderWindow& window) { // the coordinates of the body part was set up by chat gpt I tried,
-        // but I almost cried while doing this. And it also turned to be bad :(
+    void draw(sf::RenderWindow& window) {
         sf::RectangleShape verticalPart(sf::Vector2f(10, 200));
         verticalPart.setPosition(450, 100);
         verticalPart.setFillColor(sf::Color::Black);
@@ -352,7 +351,7 @@ private:
                     hangman.removePart();
                 }
                 if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Num2) {
-                    game->revealLetter(); // Відкрити одну літеру
+                    game->revealLetter();
                 }
             }
             if (currentScreen == Screens::Restart) {
